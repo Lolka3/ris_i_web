@@ -1,0 +1,18 @@
+/* Глобальный сброс и базовый фон */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: #f4f6f8;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
