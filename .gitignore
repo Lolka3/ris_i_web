@@ -3,3 +3,5 @@ dist/
 frontend/.env
 *.local
 .DS_Store
+**/bin/
+**/obj/

@@ -28,3 +28,15 @@ npm run dev
 ```
 
 Открыть адрес, который напишет терминал (обычно http://localhost:5173).
+
+## Запуск Backend (ЛР7)
+
+cd backend
+dotnet restore
+dotnet run
+
+- API: http://localhost:5000
+- Swagger: http://localhost:5000/swagger
+- Данные заявок пока в памяти, после перезапуска пропадут.
+- /health проверяет только живость процесса, а не создание заявки.
+- Настоящее создание появится в ЛР8.
