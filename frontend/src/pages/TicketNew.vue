@@ -1,21 +1,16 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { addItem } from '../ticketsStore'
+import { createTicket, ApiError } from '../api/tickets'
+import { upsertItem } from '../ticketsStore'
 
 const router = useRouter()
 
-const form = ref({
-  title: '',
-  disciplineId: 0,
-  description: '',
-})
+const form = ref({ title: '', disciplineId: 0, description: '' })
+const errors = ref({ title: '', disciplineId: '', description: '' })
 
-const errors = ref({
-  title: '',
-  disciplineId: '',
-  description: '',
-})
+const isSubmitting = ref(false)
+const submitError = ref('')
 
 function validate() {
   errors.value = { title: '', disciplineId: '', description: '' }
@@ -38,21 +33,38 @@ function validate() {
   return !errors.value.title && !errors.value.disciplineId && !errors.value.description
 }
 
-function onCreate() {
-  if (!validate()) {
-    return
+function messageFor(err) {
+  if (err instanceof ApiError) {
+    if (err.kind === 'network') return 'Нет связи с сервером'
+    if (err.status === 400) return err.message || 'Проверьте поля'
+    if (err.status >= 500) return 'Сервер не смог обработать запрос'
+    return err.message
   }
+  return 'Неизвестная ошибка'
+}
 
-  addItem({
-    title: form.value.title.trim(),
-    disciplineId: form.value.disciplineId,
-    description: form.value.description.trim(),
-  })
+async function onCreate() {
+  if (isSubmitting.value) return 
+  if (!validate()) return
 
-  form.value = { title: '', disciplineId: 0, description: '' }
-  errors.value = { title: '', disciplineId: '', description: '' }
+  isSubmitting.value = true
+  submitError.value = ''
+  try {
+    const created = await createTicket({
+      title: form.value.title.trim(),
+      disciplineId: form.value.disciplineId,
+      description: form.value.description.trim(),
+    })
 
-  router.push('/')
+    upsertItem(created)
+
+    form.value = { title: '', disciplineId: 0, description: '' }
+    router.push('/')
+  } catch (err) {
+    submitError.value = messageFor(err)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -97,7 +109,11 @@ function onCreate() {
         <p v-if="errors.description" class="error">{{ errors.description }}</p>
       </div>
 
-      <button type="submit" class="submit-btn">Создать</button>
+      <p v-if="submitError" class="error submit-error">{{ submitError }}</p>
+
+      <button type="submit" class="submit-btn" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Создаём…' : 'Создать' }}
+      </button>
     </form>
   </div>
 </template>
@@ -147,6 +163,11 @@ textarea {
   font-size: 13px;
   margin: 0;
 }
+.submit-error {
+  background: #fdecea;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
 .submit-btn {
   background: #4a90e2;
   color: #fff;
@@ -157,7 +178,11 @@ textarea {
   border-radius: 6px;
   font-size: 15px;
 }
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background: #357abd;
+}
+.submit-btn:disabled {
+  background: #9bbde8;
+  cursor: not-allowed;
 }
 </style>
