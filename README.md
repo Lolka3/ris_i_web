@@ -29,14 +29,18 @@ npm run dev
 
 Открыть адрес, который напишет терминал (обычно http://localhost:5173).
 
-## Запуск Backend (ЛР7)
+## Запуск Backend (ЛР8)
 
+```bash
 cd backend
 dotnet restore
-dotnet run
+dotnet run --launch-profile http
+```
 
 - API: http://localhost:5000
 - Swagger: http://localhost:5000/swagger
-- Данные заявок пока в памяти, после перезапуска пропадут.
+- Заявки пока хранятся в памяти и пропадают после перезапуска сервера.
 - /health проверяет только живость процесса, а не создание заявки.
-- Настоящее создание появится в ЛР8.
+- Коллекцию Postman импортировать из `docs/api-collection/retake-requests.postman_collection.json`; базовый URL — `http://localhost:5000`.
+- Для PATCH передавайте `X-User-Id`: при назначении он должен совпадать с `assigneeUserId`, а статус менять может только назначенный пользователь. Это учебная идентификация, не полноценная аутентификация.
+- Отчёт по работе: [docs/reports/lab-08.md](docs/reports/lab-08.md).

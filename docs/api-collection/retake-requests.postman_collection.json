@@ -1,0 +1,214 @@
+{
+  "info": {
+    "_postman_id": "c89b3c58-b521-4c79-91c3-29f17252c8f6",
+    "name": "Заявки на пересдачу — ЛР8",
+    "description": "REST API ЛР8. Перед PATCH передаётся X-User-Id; запускайте запросы последовательно.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "requestId",
+      "value": "1"
+    },
+    {
+      "key": "userId",
+      "value": "5"
+    }
+  ],
+  "item": [
+    {
+      "name": "GET — список (включая пустой список)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/retake-requests"
+      }
+    },
+    {
+      "name": "POST — создать (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Created', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('requestId', body.id);",
+              "pm.test('Server assigned id, number and New status', function () {",
+              "  pm.expect(body.id).to.be.a('number');",
+              "  pm.expect(body.number).to.be.a('number');",
+              "  pm.expect(body.status).to.eql('New');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Математический анализ\",\n  \"disciplineId\": 2,\n  \"description\": \"Пропустил экзамен по болезни, есть справка\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests"
+      }
+    },
+    {
+      "name": "POST — короткий title (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Физ\",\n  \"disciplineId\": 1,\n  \"description\": \"Нужна пересдача после комиссии\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests"
+      }
+    },
+    {
+      "name": "GET — несуществующий id (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/retake-requests/999999"
+      }
+    },
+    {
+      "name": "GET — созданная заявка",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/retake-requests/{{requestId}}"
+      }
+    },
+    {
+      "name": "PATCH — статус без исполнителя (409)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"InProgress\",\n  \"retakeDate\": \"2026-12-01\",\n  \"retakeTime\": \"14:30:00\",\n  \"audience\": \"А-312\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests/{{requestId}}/status"
+      }
+    },
+    {
+      "name": "PATCH — назначить себя",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"assigneeUserId\": 5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests/{{requestId}}/assignee"
+      }
+    },
+    {
+      "name": "PATCH — назначить дату и перевести в InProgress",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"InProgress\",\n  \"retakeDate\": \"2026-12-01\",\n  \"retakeTime\": \"14:30:00\",\n  \"audience\": \"А-312\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests/{{requestId}}/status"
+      }
+    },
+    {
+      "name": "PATCH — закрыть завершенную заявку",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-User-Id",
+            "value": "{{userId}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"Closed\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/retake-requests/{{requestId}}/status"
+      }
+    }
+  ]
+}
