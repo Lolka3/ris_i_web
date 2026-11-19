@@ -44,3 +44,24 @@ dotnet run --launch-profile http
 - Коллекцию Postman импортировать из `docs/api-collection/retake-requests.postman_collection.json`; базовый URL — `http://localhost:5000`.
 - Для PATCH передавайте `X-User-Id`: при назначении он должен совпадать с `assigneeUserId`, а статус менять может только назначенный пользователь. Это учебная идентификация, не полноценная аутентификация.
 - Отчёт по работе: [docs/reports/lab-08.md](docs/reports/lab-08.md).
+
+## PostgreSQL (ЛР9)
+
+SQL-схема, демонстрационные данные и запросы находятся в `db/`. Создайте
+отдельную учебную базу и выполните файлы через `psql` (или те же шаги в
+pgAdmin):
+
+```bash
+createdb course_retake_requests
+psql -d course_retake_requests -f db/schema.sql
+psql -d course_retake_requests -f db/seed.sql
+psql -d course_retake_requests -f db/queries.sql
+```
+
+Повторный запуск `schema.sql` удаляет и создаёт таблицы заново, поэтому
+используйте только учебную БД. Значения `password_hash` в seed — не настоящие
+пароли или хеши; пароль PostgreSQL в репозиторий не записывается.
+
+В ЛР9 PostgreSQL не подключается к backend: API из ЛР8 продолжает хранить
+заявки в памяти. Результаты и ограничения описаны в
+[отчёте ЛР9](docs/reports/lab-09.md).

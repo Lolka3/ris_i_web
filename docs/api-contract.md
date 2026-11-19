@@ -32,7 +32,7 @@ DELETE не используется: отмена — это статус Cance
 {
   "status": "InProgress",
   "retakeDate": "2026-09-25",
-  "retakeTime": "14:30",
+  "retakeTime": "14:30:00",
   "audience": "А-312"
 }
 ```

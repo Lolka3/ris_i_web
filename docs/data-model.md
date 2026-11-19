@@ -25,6 +25,11 @@
 | retakeDate | date, null |  | дата пересдачи |
 | retakeTime | time, null |  | время пересдачи |
 | audience | string, null |  | аудитория |
+| createdAt | timestamp with time zone |  | дата и время создания |
+
+В SQL ЛР9 этому полю соответствует `created_at` (по умолчанию — время
+PostgreSQL). `createdByUserId` и `assigneeUserId` хранятся как внешние ключи
+`created_by_user_id` и `assignee_user_id`; исполнитель может быть `NULL`.
 
 ### Discipline — дисциплина (справочник)
 
@@ -63,3 +68,10 @@ Discipline (1) ────< относится >──── (N) RetakeRequest
 При переименовании дисциплины меняется одна строка в справочнике,
 поэтому текст названия не дублируется в заявках.
 ФИО пользователя тоже не хранится в заявке — только createdByUserId и assigneeUserId.
+
+## Граница ЛР9
+
+SQL-схема описывает постоянное хранение и согласована с этой моделью. В ЛР8
+заявки пока находятся в памяти: API не заполняет `created_by_user_id` и
+`created_at` и не подключается к PostgreSQL. Интеграция приложения с БД
+выполняется отдельно.
