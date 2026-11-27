@@ -1,10 +1,13 @@
 using backend.Dtos;
 using backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace backend.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/retake-requests")]
 public sealed class RetakeRequestsController : ControllerBase
 {
@@ -33,17 +36,19 @@ public sealed class RetakeRequestsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Student")]
     public async Task<ActionResult<RetakeRequestResponse>> Create(
         CreateRetakeRequestRequest input,
         CancellationToken cancellationToken)
     {
-        var (result, created) = await _service.CreateAsync(input, cancellationToken);
+        var (result, created) = await _service.CreateAsync(
+            input, GetCurrentUserId(), cancellationToken);
         if (result == RequestChangeResult.InvalidReference)
         {
             return BadRequest(new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
-                Title = "Указана несуществующая дисциплина или не настроен пользователь-создатель"
+                Title = "Указана несуществующая дисциплина или не найден текущий пользователь"
             });
         }
 
@@ -51,46 +56,28 @@ public sealed class RetakeRequestsController : ControllerBase
     }
 
     [HttpPatch("{id:int}/assignee")]
+    [Authorize(Roles = "HeadOfDepartment")]
     public async Task<IActionResult> Assign(
         int id,
         AssignRetakeRequestRequest input,
-        [FromHeader(Name = "X-User-Id")] int? currentUserId,
         CancellationToken cancellationToken)
     {
-        if (currentUserId is null or <= 0)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Укажите корректный заголовок X-User-Id"
-            });
-        }
-
         var result = await _service.AssignAsync(
-            id, input.AssigneeUserId, currentUserId.Value, cancellationToken);
+            id, input.AssigneeUserId, cancellationToken);
         return ToActionResult(result);
     }
 
     [HttpPatch("{id:int}/status")]
+    [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> ChangeStatus(
         int id,
         ChangeRetakeRequestStatusRequest input,
-        [FromHeader(Name = "X-User-Id")] int? currentUserId,
         CancellationToken cancellationToken)
     {
-        if (currentUserId is null or <= 0)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Укажите корректный заголовок X-User-Id"
-            });
-        }
-
         var result = await _service.ChangeStatusAsync(
             id,
             input.Status,
-            currentUserId.Value,
+            GetCurrentUserId(),
             input.RetakeDate,
             input.RetakeTime,
             input.Audience,
@@ -108,6 +95,7 @@ public sealed class RetakeRequestsController : ControllerBase
                 Status = StatusCodes.Status404NotFound,
                 Title = "Заявка не найдена"
             }),
+            RequestChangeResult.Forbidden => Forbid(),
             RequestChangeResult.Conflict => Conflict(new ProblemDetails
             {
                 Status = StatusCodes.Status409Conflict,
@@ -120,4 +108,12 @@ public sealed class RetakeRequestsController : ControllerBase
             }),
             _ => throw new InvalidOperationException("Неизвестный результат изменения заявки")
         };
+
+    private int GetCurrentUserId()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(userId, out var parsedUserId)
+            ? parsedUserId
+            : throw new InvalidOperationException("В cookie отсутствует корректный идентификатор пользователя");
+    }
 }

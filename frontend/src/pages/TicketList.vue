@@ -10,6 +10,8 @@ const errorText = ref('')
 function messageFor(err) {
   if (err instanceof ApiError) {
     if (err.kind === 'network') return 'Нет связи с сервером'
+    if (err.status === 401) return 'Войдите в систему, чтобы просмотреть заявки'
+    if (err.status === 403) return 'Недостаточно прав для просмотра заявок'
     if (err.status === 400) return 'Проверьте поля запроса'
     if (err.status === 404) return 'Список заявок не найден'
     if (err.status >= 500) return 'Сервер не смог обработать запрос'

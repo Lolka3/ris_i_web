@@ -1,10 +1,36 @@
 <script setup>
 import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ApiError, login } from '../api/tickets'
+import { currentUser } from '../auth'
 
-const login = ref({ username: '', password: '' })
+const route = useRoute()
+const router = useRouter()
+const credentials = ref({ login: '', password: '' })
+const errorText = ref('')
+const isSubmitting = ref(false)
 
-function onLogin() {
-  console.log('Вход (заглушка):', login.value)
+async function onLogin() {
+  if (isSubmitting.value) return
+
+  errorText.value = ''
+  isSubmitting.value = true
+  try {
+    currentUser.value = await login(credentials.value)
+    const redirect = route.query.redirect
+    const target = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+      ? redirect
+      : '/'
+    await router.replace(target)
+  } catch (error) {
+    errorText.value = error instanceof ApiError
+      ? error.status === 401
+        ? 'Неверный логин или пароль'
+        : error.message
+      : 'Не удалось выполнить вход'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -13,8 +39,8 @@ function onLogin() {
     <h1>Вход</h1>
     <form @submit.prevent="onLogin">
       <div class="form-group">
-        <label for="username">Логин</label>
-        <input id="username" name="username" v-model="login.username" />
+        <label for="login">Логин</label>
+        <input id="login" name="login" autocomplete="username" v-model="credentials.login" required />
       </div>
 
       <div class="form-group">
@@ -23,11 +49,16 @@ function onLogin() {
           id="password"
           name="password"
           type="password"
-          v-model="login.password"
+          autocomplete="current-password"
+          v-model="credentials.password"
+          required
         />
       </div>
 
-      <button type="submit" class="submit-btn">Войти</button>
+      <p v-if="errorText" class="error" role="alert">{{ errorText }}</p>
+      <button type="submit" class="submit-btn" :disabled="isSubmitting">
+        {{ isSubmitting ? 'Входим…' : 'Войти' }}
+      </button>
     </form>
   </div>
 </template>
@@ -76,4 +107,6 @@ input:focus {
   font-size: 15px;
 }
 .submit-btn:hover { background: #357abd; }
+.submit-btn:disabled { opacity: 0.7; cursor: wait; }
+.error { margin: 0; color: #c0392b; }
 </style>

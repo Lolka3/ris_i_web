@@ -10,13 +10,12 @@ public enum RequestChangeResult
     Success,
     NotFound,
     Conflict,
-    InvalidReference
+    InvalidReference,
+    Forbidden
 }
 
 public sealed class RetakeRequestService(AppDbContext dbContext)
 {
-    private const int DemoStudentUserId = 1;
-
     public async Task<IReadOnlyList<RetakeRequestResponse>> GetAllAsync(
         CancellationToken cancellationToken = default) =>
         await dbContext.RetakeRequests
@@ -37,12 +36,13 @@ public sealed class RetakeRequestService(AppDbContext dbContext)
 
     public async Task<(RequestChangeResult Result, RetakeRequestResponse? Request)> CreateAsync(
         CreateRetakeRequestRequest input,
+        int createdByUserId,
         CancellationToken cancellationToken = default)
     {
         if (!await dbContext.Disciplines.AnyAsync(
                 item => item.Id == input.DisciplineId, cancellationToken) ||
             !await dbContext.Users.AnyAsync(
-                item => item.Id == DemoStudentUserId, cancellationToken))
+                item => item.Id == createdByUserId, cancellationToken))
         {
             return (RequestChangeResult.InvalidReference, null);
         }
@@ -52,7 +52,7 @@ public sealed class RetakeRequestService(AppDbContext dbContext)
             Title = input.Title.Trim(),
             DisciplineId = input.DisciplineId,
             Description = input.Description.Trim(),
-            CreatedByUserId = DemoStudentUserId
+            CreatedByUserId = createdByUserId
         };
         dbContext.RetakeRequests.Add(request);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -63,7 +63,6 @@ public sealed class RetakeRequestService(AppDbContext dbContext)
     public async Task<(RequestChangeResult Result, RetakeRequestResponse? Request)> AssignAsync(
         int id,
         int assigneeUserId,
-        int currentUserId,
         CancellationToken cancellationToken = default)
     {
         var request = await dbContext.RetakeRequests
@@ -73,17 +72,22 @@ public sealed class RetakeRequestService(AppDbContext dbContext)
             return (RequestChangeResult.NotFound, null);
         }
 
-        if (assigneeUserId != currentUserId ||
-            request.Status != "New" ||
+        if (request.Status != "New" ||
             request.AssigneeUserId is not null && request.AssigneeUserId != assigneeUserId)
         {
             return (RequestChangeResult.Conflict, null);
         }
 
-        if (!await dbContext.Users.AnyAsync(
-                item => item.Id == assigneeUserId, cancellationToken))
+        var assignee = await dbContext.Users
+            .SingleOrDefaultAsync(item => item.Id == assigneeUserId, cancellationToken);
+        if (assignee is null)
         {
             return (RequestChangeResult.InvalidReference, null);
+        }
+
+        if (assignee.Role != "Teacher")
+        {
+            return (RequestChangeResult.Forbidden, null);
         }
 
         request.AssigneeUserId = assigneeUserId;
@@ -109,7 +113,7 @@ public sealed class RetakeRequestService(AppDbContext dbContext)
 
         if (request.AssigneeUserId != currentUserId)
         {
-            return (RequestChangeResult.Conflict, null);
+            return (RequestChangeResult.Forbidden, null);
         }
 
         switch (status)

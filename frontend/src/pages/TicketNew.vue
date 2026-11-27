@@ -36,6 +36,8 @@ function validate() {
 function messageFor(err) {
   if (err instanceof ApiError) {
     if (err.kind === 'network') return 'Нет связи с сервером'
+    if (err.status === 401) return 'Войдите в систему, чтобы создать заявку'
+    if (err.status === 403) return 'Создавать заявки может только студент'
     if (err.status === 400) return err.message || 'Проверьте поля'
     if (err.status >= 500) return 'Сервер не смог обработать запрос'
     return err.message

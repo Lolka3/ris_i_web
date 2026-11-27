@@ -1,8 +1,4 @@
-import { mockGetTickets, mockCreateTicket } from './mockTickets'
-
-export const USE_MOCK = true
-
-const baseUrl = import.meta.env.VITE_API_BASE_URL
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
 export class ApiError extends Error {
   constructor(message, { status = null, kind = 'http', data = null } = {}) {
@@ -15,17 +11,14 @@ export class ApiError extends Error {
 }
 
 function toError(status, data) {
-  const message = data?.message || `Сервер ответил статусом ${status}`
+  const message = data?.title || data?.message || `Сервер ответил статусом ${status}`
   return new ApiError(message, { status, kind: 'http', data })
 }
 
 async function handleResponse(response) {
-  let data = null
-  try {
-    data = await response.json()
-  } catch {
-    
-  }
+  const data = response.headers.get('content-type')?.includes('json')
+    ? await response.json()
+    : null
 
   if (!response.ok) {
     throw toError(response.status, data)
@@ -34,36 +27,63 @@ async function handleResponse(response) {
 }
 
 export async function getTickets() {
-  if (USE_MOCK) {
-    const result = await mockGetTickets()
-    if (!result.ok) throw toError(result.status, result.data)
-    return result.data
-  }
-
   let response
   try {
-    response = await fetch(`${baseUrl}/api/retake-requests`)
-  } catch (err) {
+    response = await fetch(`${baseUrl}/api/retake-requests`, { credentials: 'include' })
+  } catch {
     throw new ApiError('Нет связи с сервером', { kind: 'network' })
   }
   return handleResponse(response)
 }
 
 export async function createTicket(body) {
-  if (USE_MOCK) {
-    const result = await mockCreateTicket(body)
-    if (!result.ok) throw toError(result.status, result.data)
-    return result.data
-  }
-
   let response
   try {
     response = await fetch(`${baseUrl}/api/retake-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body),
     })
-  } catch (err) {
+  } catch {
+    throw new ApiError('Нет связи с сервером', { kind: 'network' })
+  }
+  return handleResponse(response)
+}
+
+export async function login(credentials) {
+  let response
+  try {
+    response = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(credentials),
+    })
+  } catch {
+    throw new ApiError('Нет связи с сервером', { kind: 'network' })
+  }
+  return handleResponse(response)
+}
+
+export async function getCurrentUser() {
+  let response
+  try {
+    response = await fetch(`${baseUrl}/api/auth/me`, { credentials: 'include' })
+  } catch {
+    throw new ApiError('Нет связи с сервером', { kind: 'network' })
+  }
+  return handleResponse(response)
+}
+
+export async function logout() {
+  let response
+  try {
+    response = await fetch(`${baseUrl}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+  } catch {
     throw new ApiError('Нет связи с сервером', { kind: 'network' })
   }
   return handleResponse(response)

@@ -17,6 +17,7 @@ const statusLabels = {
       <tr>
         <th>Номер</th>
         <th>Тема</th>
+        <th>Описание</th>
         <th>Дисциплина (ID)</th>
         <th>Статус</th>
       </tr>
@@ -25,6 +26,7 @@ const statusLabels = {
       <tr v-for="item in items" :key="item.id">
         <td>{{ item.number }}</td>
         <td>{{ item.title }}</td>
+        <td>{{ item.description }}</td>
         <td>{{ item.disciplineId }}</td>
         <td>{{ statusLabels[item.status] || item.status }}</td>
       </tr>
