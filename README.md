@@ -29,21 +29,30 @@ npm run dev
 
 Открыть адрес, который напишет терминал (обычно http://localhost:5173).
 
-## Запуск Backend (ЛР8)
+## Запуск Backend и PostgreSQL (ЛР10)
 
 ```bash
 cd backend
 dotnet restore
+dotnet tool install --global dotnet-ef --version 8.0.11
+createdb course_retake_requests_lab10
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=course_retake_requests_lab10;Username=postgres;Password=ВАШ_ЛОКАЛЬНЫЙ_ПАРОЛЬ"
+dotnet ef database update
+psql -d course_retake_requests_lab10 -f ..\db\seed.sql
 dotnet run --launch-profile http
 ```
 
+- Конфигурация `ConnectionStrings:Default` хранится в локальном User Secrets, не в Git.
 - API: http://localhost:5000
 - Swagger: http://localhost:5000/swagger
-- Заявки пока хранятся в памяти и пропадают после перезапуска сервера.
+- Заявки и номера генерируются и сохраняются в PostgreSQL, поэтому остаются после перезапуска API.
+- В учебной версии создателем новых заявок служит пользователь с `id = 1` из `db/seed.sql`; полноценной аутентификации пока нет.
 - /health проверяет только живость процесса, а не создание заявки.
 - Коллекцию Postman импортировать из `docs/api-collection/retake-requests.postman_collection.json`; базовый URL — `http://localhost:5000`.
 - Для PATCH передавайте `X-User-Id`: при назначении он должен совпадать с `assigneeUserId`, а статус менять может только назначенный пользователь. Это учебная идентификация, не полноценная аутентификация.
-- Отчёт по работе: [docs/reports/lab-08.md](docs/reports/lab-08.md).
+- Миграции находятся в `backend/Migrations/` и применяются к пустой базе `course_retake_requests_lab10`, чтобы не конфликтовать с таблицами ЛР9; не запускайте поверх этой же БД `db/schema.sql`.
+- Отчёты: [ЛР9](docs/reports/lab-09.md), [ЛР10](docs/reports/lab-10.md).
 
 ## PostgreSQL (ЛР9)
 
@@ -62,6 +71,6 @@ psql -d course_retake_requests -f db/queries.sql
 используйте только учебную БД. Значения `password_hash` в seed — не настоящие
 пароли или хеши; пароль PostgreSQL в репозиторий не записывается.
 
-В ЛР9 PostgreSQL не подключается к backend: API из ЛР8 продолжает хранить
-заявки в памяти. Результаты и ограничения описаны в
-[отчёте ЛР9](docs/reports/lab-09.md).
+Схема ЛР9 в `db/` остаётся самостоятельным SQL-развёртыванием. Backend
+использует EF Core миграции из `backend/Migrations/`; применяйте их к новой
+учебной базе, затем загрузите `db/seed.sql`.

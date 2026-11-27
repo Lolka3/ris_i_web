@@ -1,14 +1,20 @@
 using backend.Services;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using backend.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "Connection string 'Default' is required. Configure it with user-secrets or an environment variable.");
 
 builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
 builder.Services.AddControllers();
 builder.Services.AddSingleton<IHealthService, HealthService>();
-builder.Services.AddSingleton<RetakeRequestService>();
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddScoped<RetakeRequestService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -61,7 +67,7 @@ app.MapGet("/info", () => Results.Ok(new
 {
     application = "Retake Requests API",
     environment = app.Environment.EnvironmentName,
-    version = "ЛР8"
+    version = "ЛР10"
 }));
 
 app.Run();

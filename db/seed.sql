@@ -28,3 +28,4 @@ INSERT INTO retake_requests (
 SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT MAX(id) FROM users), true);
 SELECT setval(pg_get_serial_sequence('disciplines', 'id'), (SELECT MAX(id) FROM disciplines), true);
 SELECT setval(pg_get_serial_sequence('retake_requests', 'id'), (SELECT MAX(id) FROM retake_requests), true);
+SELECT setval(pg_get_serial_sequence('retake_requests', 'number'), (SELECT MAX(number) FROM retake_requests), true);

@@ -10,19 +10,19 @@ public sealed class RetakeRequestsController : ControllerBase
 {
     private readonly RetakeRequestService _service;
 
-    public RetakeRequestsController(RetakeRequestService service)
-    {
-        _service = service;
-    }
+    public RetakeRequestsController(RetakeRequestService service) => _service = service;
 
     [HttpGet]
-    public ActionResult<IReadOnlyList<RetakeRequestResponse>> GetAll() =>
-        Ok(_service.GetAll());
+    public async Task<ActionResult<IReadOnlyList<RetakeRequestResponse>>> GetAll(
+        CancellationToken cancellationToken) =>
+        Ok(await _service.GetAllAsync(cancellationToken));
 
     [HttpGet("{id:int}")]
-    public ActionResult<RetakeRequestResponse> GetById(int id)
+    public async Task<ActionResult<RetakeRequestResponse>> GetById(
+        int id,
+        CancellationToken cancellationToken)
     {
-        var request = _service.GetById(id);
+        var request = await _service.GetByIdAsync(id, cancellationToken);
         return request is null
             ? NotFound(new ProblemDetails
             {
@@ -33,14 +33,29 @@ public sealed class RetakeRequestsController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<RetakeRequestResponse> Create(CreateRetakeRequestRequest input)
+    public async Task<ActionResult<RetakeRequestResponse>> Create(
+        CreateRetakeRequestRequest input,
+        CancellationToken cancellationToken)
     {
-        var created = _service.Create(input);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        var (result, created) = await _service.CreateAsync(input, cancellationToken);
+        if (result == RequestChangeResult.InvalidReference)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Указана несуществующая дисциплина или не настроен пользователь-создатель"
+            });
+        }
+
+        return CreatedAtAction(nameof(GetById), new { id = created!.Id }, created);
     }
 
     [HttpPatch("{id:int}/assignee")]
-    public IActionResult Assign(int id, AssignRetakeRequestRequest input, [FromHeader(Name = "X-User-Id")] int? currentUserId)
+    public async Task<IActionResult> Assign(
+        int id,
+        AssignRetakeRequestRequest input,
+        [FromHeader(Name = "X-User-Id")] int? currentUserId,
+        CancellationToken cancellationToken)
     {
         if (currentUserId is null or <= 0)
         {
@@ -51,14 +66,17 @@ public sealed class RetakeRequestsController : ControllerBase
             });
         }
 
-        return ToActionResult(id, _service.Assign(id, input.AssigneeUserId, currentUserId.Value));
+        var result = await _service.AssignAsync(
+            id, input.AssigneeUserId, currentUserId.Value, cancellationToken);
+        return ToActionResult(result);
     }
 
     [HttpPatch("{id:int}/status")]
-    public IActionResult ChangeStatus(
+    public async Task<IActionResult> ChangeStatus(
         int id,
         ChangeRetakeRequestStatusRequest input,
-        [FromHeader(Name = "X-User-Id")] int? currentUserId)
+        [FromHeader(Name = "X-User-Id")] int? currentUserId,
+        CancellationToken cancellationToken)
     {
         if (currentUserId is null or <= 0)
         {
@@ -69,19 +87,22 @@ public sealed class RetakeRequestsController : ControllerBase
             });
         }
 
-        return ToActionResult(id, _service.ChangeStatus(
+        var result = await _service.ChangeStatusAsync(
             id,
             input.Status,
             currentUserId.Value,
             input.RetakeDate,
             input.RetakeTime,
-            input.Audience));
+            input.Audience,
+            cancellationToken);
+        return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult(int id, RequestChangeResult result) =>
-        result switch
+    private IActionResult ToActionResult(
+        (RequestChangeResult Result, RetakeRequestResponse? Request) result) =>
+        result.Result switch
         {
-            RequestChangeResult.Success => Ok(_service.GetById(id)),
+            RequestChangeResult.Success => Ok(result.Request),
             RequestChangeResult.NotFound => NotFound(new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,
@@ -91,6 +112,11 @@ public sealed class RetakeRequestsController : ControllerBase
             {
                 Status = StatusCodes.Status409Conflict,
                 Title = "Действие противоречит текущему состоянию заявки"
+            }),
+            RequestChangeResult.InvalidReference => BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Указан несуществующий пользователь"
             }),
             _ => throw new InvalidOperationException("Неизвестный результат изменения заявки")
         };
